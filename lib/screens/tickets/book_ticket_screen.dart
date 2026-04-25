@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/providers/ticket_provider.dart';
 import '../main_nav/main_navigation.dart';
-import 'dummy_payment_screen.dart';
+import 'detailed_dummy_payment_screen.dart';
 
 class BookTicketScreen extends StatefulWidget {
   final MetroRoute route;
@@ -451,11 +451,11 @@ class _BookTicketScreenState extends State<BookTicketScreen> {
     }
     final totalFare = baseFare * _quantity;
 
-    // Launch Dummy Payment Gateway
+    // Launch Detailed Dummy Payment Gateway
     final bool? paymentSuccess = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DummyPaymentScreen(amount: totalFare),
+        builder: (_) => DetailedDummyPaymentScreen(amount: totalFare),
       ),
     );
 
@@ -467,6 +467,18 @@ class _BookTicketScreenState extends State<BookTicketScreen> {
     if (!context.mounted) return;
 
     setState(() => _isBooking = true);
+    await _processBooking();
+  }
+
+  Future<void> _processBooking() async {
+    double baseFare = widget.route.fare;
+    if (_ticketType == 'monthly_pass') {
+      baseFare = baseFare * 30;
+    } else if (_journeyType == 'return') {
+      baseFare = baseFare * 2;
+    }
+
+    if (!mounted) return;
 
     final ticketProvider = context.read<TicketProvider>();
     final routeSummary = widget.route.segments
