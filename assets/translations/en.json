@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "home": "Home",
+    "map": "Map",
+    "tickets": "Tickets",
+    "routes": "Routes",
+    "profile": "Profile"
+  },
+  "home": {
+    "welcome": "Good Morning",
+    "bookTicket": "Book Ticket",
+    "rechargeCard": "Recharge Card",
+    "smartCard": "Mumbai-1 Card",
+    "recent": "Recent Routes",
+    "whereTo": "Where to?",
+    "searchStation": "Search stations..."
+  },
+  "profile": {
+    "title": "Profile",
+    "language": "Language",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "settings": {
+    "english": "English",
+    "hindi": "Hindi",
+    "marathi": "Marathi"
+  }
+}

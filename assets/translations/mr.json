@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "home": "मुख्य पान",
+    "map": "नकाशा",
+    "tickets": "तिकीट",
+    "routes": "मार्ग",
+    "profile": "प्रोफाईल"
+  },
+  "home": {
+    "welcome": "सुप्रभात",
+    "bookTicket": "तिकीट बुक करा",
+    "rechargeCard": "कार्ड रिचार्ज करा",
+    "smartCard": "मुंबई-1 कार्ड",
+    "recent": "अलीकडील मार्ग",
+    "whereTo": "कुठे जायचे आहे?",
+    "searchStation": "स्टेशन शोधा..."
+  },
+  "profile": {
+    "title": "प्रोफाईल",
+    "language": "भाषा",
+    "settings": "सेटिंग्ज",
+    "logout": "लॉग आउट"
+  },
+  "settings": {
+    "english": "English",
+    "hindi": "हिन्दी",
+    "marathi": "मराठी"
+  }
+}
