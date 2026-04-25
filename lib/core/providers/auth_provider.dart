@@ -178,9 +178,9 @@ class AppAuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> saveEmergencyContact(String name, String phone) async {
+  Future<bool> updateEmergencyContacts(List<Map<String, dynamic>> contacts) async {
     if (uid.isEmpty) return false;
-    return await _firestore.saveEmergencyContact(uid, name, phone);
+    return await _firestore.updateEmergencyContacts(uid, contacts);
   }
 
   Stream<DocumentSnapshot>? get userProfileStream {

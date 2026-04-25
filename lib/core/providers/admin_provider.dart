@@ -43,6 +43,21 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  /// Edit an announcement by document ID
+  Future<bool> editAnnouncement(String docId, String message, String category, String line) async {
+    try {
+      await _firestore.db.collection('announcements').doc(docId).update({
+        'message': message,
+        'category': category,
+        'line': line,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error editing announcement: $e');
+      return false;
+    }
+  }
+
   /// Stream all announcements ordered by newest first
   Stream<QuerySnapshot> get announcementsStream {
     return _firestore.db

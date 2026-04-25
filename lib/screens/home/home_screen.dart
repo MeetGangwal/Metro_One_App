@@ -1170,46 +1170,81 @@ class HomeScreen extends StatelessWidget {
                     stream: auth.userProfileStream,
                     builder: (context, snapshot) {
                       if (!snapshot.hasData || snapshot.data?.data() == null) {
-                        return _buildAddContactButton(context, auth);
+                        return _buildAddContactButton(context, auth, []);
                       }
                       final data = snapshot.data!.data() as Map<String, dynamic>;
-                      final contact = data['emergencyContact'] as Map<String, dynamic>?;
+                      final contactsList = (data['emergencyContacts'] as List<dynamic>?)
+                              ?.map((e) => Map<String, dynamic>.from(e as Map))
+                              .toList() ??
+                          [];
                       
-                      if (contact == null || contact['phone'] == null || contact['phone'].toString().isEmpty) {
-                        return _buildAddContactButton(context, auth);
+                      if (contactsList.isEmpty) {
+                        return _buildAddContactButton(context, auth, contactsList);
                       }
                       
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.2), shape: BoxShape.circle),
-                              child: const Icon(Icons.person, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(contact['name'] ?? 'Saved Contact', style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-                                  Text(contact['phone'], style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => _makePhoneCall(contact['phone']),
-                              icon: const Icon(Icons.call, color: AppColors.success),
-                              style: IconButton.styleFrom(backgroundColor: AppColors.success.withValues(alpha: 0.1)),
-                            ),
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: contactsList.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final contact = contactsList[index];
+                              final currentName = contact['name'] ?? 'Saved Contact';
+                              final currentPhone = contact['phone'] ?? '';
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.2), shape: BoxShape.circle),
+                                      child: const Icon(Icons.person, color: AppColors.primary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(currentName, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                                          Text(currentPhone, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _showContactDialog(context, auth, contactsList, index: index),
+                                      icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                                      style: IconButton.styleFrom(backgroundColor: AppColors.primary.withValues(alpha: 0.1)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      onPressed: () => _confirmDeleteContact(context, auth, contactsList, index),
+                                      icon: const Icon(Icons.delete_rounded, color: AppColors.error),
+                                      style: IconButton.styleFrom(backgroundColor: AppColors.error.withValues(alpha: 0.1)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      onPressed: () => _makePhoneCall(currentPhone),
+                                      icon: const Icon(Icons.call, color: AppColors.success),
+                                      style: IconButton.styleFrom(backgroundColor: AppColors.success.withValues(alpha: 0.1)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          if (contactsList.length < 3) ...[
+                            const SizedBox(height: 12),
+                            _buildAddContactButton(context, auth, contactsList),
                           ],
-                        ),
+                        ],
                       );
                     }
                   ),
@@ -1275,9 +1310,9 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAddContactButton(BuildContext context, AppAuthProvider auth) {
+  Widget _buildAddContactButton(BuildContext context, AppAuthProvider auth, List<Map<String, dynamic>> contactsList) {
     return InkWell(
-      onTap: () => _showAddContactDialog(context, auth),
+      onTap: () => _showContactDialog(context, auth, contactsList),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1297,42 +1332,79 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showAddContactDialog(BuildContext context, AppAuthProvider auth) {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
+  void _showContactDialog(BuildContext context, AppAuthProvider auth, List<Map<String, dynamic>> contactsList, {int? index}) {
+    final isEditing = index != null;
+    final initialName = isEditing ? contactsList[index]['name'] : null;
+    final initialPhone = isEditing ? contactsList[index]['phone'] : null;
+    
+    final nameCtrl = TextEditingController(text: initialName);
+    final phoneCtrl = TextEditingController(text: initialPhone);
     
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Add Contact', style: TextStyle(color: AppColors.textPrimary)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(labelText: 'Contact Name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(labelText: 'Phone Number'),
-            ),
-          ],
+        title: Text(isEditing ? 'Edit Contact' : 'Add Contact', style: const TextStyle(color: AppColors.textPrimary)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Contact Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
           ElevatedButton(
             onPressed: () {
               if (nameCtrl.text.isNotEmpty && phoneCtrl.text.isNotEmpty) {
-                auth.saveEmergencyContact(nameCtrl.text.trim(), phoneCtrl.text.trim());
+                final newContact = {'name': nameCtrl.text.trim(), 'phone': phoneCtrl.text.trim()};
+                final newList = List<Map<String, dynamic>>.from(contactsList);
+                if (isEditing) {
+                  newList[index] = newContact;
+                } else {
+                  newList.add(newContact);
+                }
+                auth.updateEmergencyContacts(newList);
                 Navigator.pop(ctx);
               }
             },
             child: const Text('Save'),
+          ),
+        ],
+      )
+    );
+  }
+
+  void _confirmDeleteContact(BuildContext context, AppAuthProvider auth, List<Map<String, dynamic>> contactsList, int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete Contact?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text('This will remove your emergency contact.', style: TextStyle(color: AppColors.textMuted)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+          ElevatedButton(
+            onPressed: () {
+              final newList = List<Map<String, dynamic>>.from(contactsList);
+              newList.removeAt(index);
+              auth.updateEmergencyContacts(newList);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       )
@@ -1354,8 +1426,10 @@ class HomeScreen extends StatelessWidget {
       return;
     }
     final data = doc.data() as Map<String, dynamic>;
-    final contact = data['emergencyContact'] as Map<String, dynamic>?;
-    if (contact == null || contact['phone'] == null) {
+    final contactsList = (data['emergencyContacts'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ?? [];
+    if (contactsList.isEmpty) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add an emergency contact first.')));
       return;
     }
@@ -1393,9 +1467,10 @@ class HomeScreen extends StatelessWidget {
     final message = 'SOS! I need help. My current location is: $mapsLink';
     
     // 3. Send SMS
+    final phones = contactsList.map((c) => c['phone']).join(',');
     final Uri smsUri = Uri(
       scheme: 'sms',
-      path: contact['phone'],
+      path: phones,
       queryParameters: <String, String>{
         'body': message,
       },

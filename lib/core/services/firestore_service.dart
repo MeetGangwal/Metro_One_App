@@ -60,18 +60,15 @@ class FirestoreService {
     }
   }
 
-  /// Save emergency contact
-  Future<bool> saveEmergencyContact(String uid, String name, String phone) async {
+  /// Update emergency contacts list
+  Future<bool> updateEmergencyContacts(String uid, List<Map<String, dynamic>> contacts) async {
     try {
       await db.collection('users').doc(uid).set({
-        'emergencyContact': {
-          'name': name,
-          'phone': phone,
-        }
+        'emergencyContacts': contacts,
       }, SetOptions(merge: true));
       return true;
     } catch (e) {
-      debugPrint('Firestore saveEmergencyContact error: $e');
+      debugPrint('Firestore updateEmergencyContacts error: $e');
       return false;
     }
   }

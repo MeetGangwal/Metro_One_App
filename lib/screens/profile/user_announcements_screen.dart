@@ -5,8 +5,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/admin_provider.dart';
 
-class UserAnnouncementsScreen extends StatelessWidget {
+class UserAnnouncementsScreen extends StatefulWidget {
   const UserAnnouncementsScreen({super.key});
+
+  @override
+  State<UserAnnouncementsScreen> createState() => _UserAnnouncementsScreenState();
+}
+
+class _UserAnnouncementsScreenState extends State<UserAnnouncementsScreen> {
+  String _selectedFilter = 'all';
 
   static const _lineNames = {
     'blue': 'Blue Line',
@@ -89,6 +96,27 @@ class UserAnnouncementsScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
+              // ── Filter Row ──
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    _buildFilterChip('all', 'All'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('blue', 'Blue Line'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('yellow', 'Yellow Line'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('red', 'Red Line'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('aqua', 'Aqua Line'),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 100.ms),
+
+              const SizedBox(height: 16),
+
               // ── Announcements Stream ──
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
@@ -119,7 +147,14 @@ class UserAnnouncementsScreen extends StatelessWidget {
                       );
                     }
 
-                    final docs = snap.data?.docs ?? [];
+                    var docs = snap.data?.docs ?? [];
+                    
+                    if (_selectedFilter != 'all') {
+                      docs = docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return data['line'] == _selectedFilter;
+                      }).toList();
+                    }
 
                     if (docs.isEmpty) {
                       return Center(
@@ -301,5 +336,33 @@ class UserAnnouncementsScreen extends StatelessWidget {
     if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
     if (diff.inHours < 24) return '${diff.inHours} hr ago';
     return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+  }
+
+  Widget _buildFilterChip(String id, String label) {
+    final isSelected = _selectedFilter == id;
+    final color = id == 'all' ? AppColors.primary : _lineColors[id] ?? AppColors.primary;
+    
+    return FilterChip(
+      selected: isSelected,
+      label: Text(label),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+      ),
+      backgroundColor: AppColors.surfaceCard,
+      selectedColor: color,
+      checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? Colors.transparent : AppColors.textMuted.withValues(alpha: 0.2),
+        ),
+      ),
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() => _selectedFilter = id);
+        }
+      },
+    );
   }
 }

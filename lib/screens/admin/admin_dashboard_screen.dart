@@ -409,11 +409,18 @@ class _AnnouncementsTabState extends State<_AnnouncementsTab> {
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded,
-                              color: AppColors.error, size: 20),
-                          onPressed: () =>
-                              admin.deleteAnnouncement(docs[i].id),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 20),
+                              onPressed: () => _editAnnouncementDialog(context, admin, docs[i].id, data),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                              onPressed: () => _confirmDeleteAnnouncement(context, admin, docs[i].id),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -447,6 +454,89 @@ class _AnnouncementsTabState extends State<_AnnouncementsTab> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+
+  void _editAnnouncementDialog(BuildContext context, AdminProvider admin, String docId, Map<String, dynamic> data) {
+    final msgCtrl = TextEditingController(text: data['message']);
+    String cat = data['category'] ?? 'General';
+    String line = data['line'] ?? 'blue';
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('Edit Announcement', style: TextStyle(color: AppColors.textPrimary)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: msgCtrl,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    maxLines: 3,
+                    decoration: const InputDecoration(labelText: 'Message'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: cat,
+                    dropdownColor: AppColors.surfaceLight,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                    onChanged: (v) => setState(() => cat = v!),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: line,
+                    dropdownColor: AppColors.surfaceLight,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: const InputDecoration(labelText: 'Metro Line'),
+                    items: _lines.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value.$1))).toList(),
+                    onChanged: (v) => setState(() => line = v!),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+              ElevatedButton(
+                onPressed: () {
+                  if (msgCtrl.text.isNotEmpty) {
+                    admin.editAnnouncement(docId, msgCtrl.text.trim(), cat, line);
+                    Navigator.pop(ctx);
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  void _confirmDeleteAnnouncement(BuildContext context, AdminProvider admin, String docId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete Announcement?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text('This action cannot be undone.', style: TextStyle(color: AppColors.textMuted)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+          ElevatedButton(
+            onPressed: () {
+              admin.deleteAnnouncement(docId);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      )
+    );
   }
 }
 
