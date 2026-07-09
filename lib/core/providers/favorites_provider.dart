@@ -10,6 +10,7 @@ class FavoritesProvider extends ChangeNotifier {
   List<SavedRoute> _favorites = [];
   List<String> _recentSearches = [];
   String? _uid;
+  bool _hasSynced = false;
 
   FavoritesProvider(this._prefs) {
     _uid = _prefs.getString('uid');
@@ -22,10 +23,19 @@ class FavoritesProvider extends ChangeNotifier {
 
   /// Set the user ID for Firestore operations
   void setUid(String uid) {
-    if (_uid == uid) return;
+    if (_uid == uid) {
+      if (!_hasSynced && uid.isNotEmpty) {
+        _hasSynced = true;
+        syncFromFirestore();
+      }
+      return;
+    }
     _favorites.clear(); // Clear previous user's data
     _uid = uid;
-    syncFromFirestore();
+    _hasSynced = true;
+    if (uid.isNotEmpty) {
+      syncFromFirestore();
+    }
   }
 
   void _loadFavorites() {

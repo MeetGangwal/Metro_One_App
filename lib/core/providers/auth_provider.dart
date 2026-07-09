@@ -127,6 +127,11 @@ class AppAuthProvider extends ChangeNotifier {
 
       if (_user != null) {
         await _prefs.setString('uid', _user!.uid);
+        // Fetch profile to ensure data like name is synced from Firestore
+        final profile = await _firestore.getUserProfile(_user!.uid);
+        if (profile != null && profile['name'] != null) {
+          _userName = profile['name'];
+        }
       }
 
       await _saveToPrefs();

@@ -11,6 +11,7 @@ class TicketProvider extends ChangeNotifier {
   List<MetroTicket> _tickets = [];
   bool _isLoading = false;
   String? _uid;
+  bool _hasSynced = false;
 
   TicketProvider(this._prefs) {
     _uid = _prefs.getString('uid');
@@ -36,10 +37,19 @@ class TicketProvider extends ChangeNotifier {
 
   /// Set the user ID for Firestore operations
   void setUid(String uid) {
-    if (_uid == uid) return;
+    if (_uid == uid) {
+      if (!_hasSynced && uid.isNotEmpty) {
+        _hasSynced = true;
+        syncFromFirestore();
+      }
+      return;
+    }
     _tickets.clear(); // Clear previous user's data
     _uid = uid;
-    syncFromFirestore();
+    _hasSynced = true;
+    if (uid.isNotEmpty) {
+      syncFromFirestore();
+    }
   }
 
   void _loadTickets() {

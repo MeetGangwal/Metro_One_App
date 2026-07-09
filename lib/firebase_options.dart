@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      return android; // Force use Android config on Web to reuse valid App ID
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -21,7 +21,7 @@ class DefaultFirebaseOptions {
   // ==================== WEB CONFIG ====================
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBuJzVcUV4gugwySX3oi6GmymVhDjYlfP4', // Reusing Android API Key
-    appId: 'PASTE_WEB_APP_ID_HERE_IF_NEEDED', // Only required if running on Chrome/Web
+    appId: '1:989207460958:web:29486f8656ff1851c048cf', // Fixed Web App ID format to prevent token exchange issues on Chrome
     messagingSenderId: '989207460958',
     projectId: 'pa-9-10-final',
     authDomain: 'pa-9-10-final.firebaseapp.com',
