@@ -345,7 +345,16 @@ class _AnnouncementsTabState extends State<_AnnouncementsTab> {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final docs = snap.data?.docs ?? [];
+              final docs = snap.data?.docs.toList() ?? [];
+              docs.sort((a, b) {
+                final ta = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                final tb = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                if (ta == null && tb == null) return 0;
+                if (ta == null) return 1; // Put nulls at the bottom
+                if (tb == null) return -1;
+                return tb.compareTo(ta);
+              });
+              
               if (docs.isEmpty) {
                 return Container(
                   padding: const EdgeInsets.all(24),
@@ -412,6 +421,11 @@ class _AnnouncementsTabState extends State<_AnnouncementsTab> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            Switch(
+                              value: data['isActive'] == true,
+                              activeThumbColor: AppColors.primary,
+                              onChanged: (val) => admin.toggleAnnouncementStatus(docs[i].id, val),
+                            ),
                             IconButton(
                               icon: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 20),
                               onPressed: () => _editAnnouncementDialog(context, admin, docs[i].id, data),

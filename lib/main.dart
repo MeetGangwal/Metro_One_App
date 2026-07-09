@@ -88,7 +88,17 @@ class MumbaiMetroApp extends StatelessWidget {
             return provider;
           },
         ),
-        ChangeNotifierProvider(create: (_) => CrowdProvider()),
+        ChangeNotifierProxyProvider<AppAuthProvider, CrowdProvider>(
+          create: (_) => CrowdProvider(),
+          update: (_, auth, crowd) {
+            final provider = crowd ?? CrowdProvider();
+            // Re-establish (or cancel) the Firestore stream on every auth change.
+            // This is the critical fix: the stream only runs while authenticated,
+            // so Firestore Security Rules (require auth) are always satisfied.
+            provider.onAuthChanged(isLoggedIn: auth.isLoggedIn);
+            return provider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => TransitAlarmProvider()),
         ChangeNotifierProxyProvider<AppAuthProvider, FavoritesProvider>(

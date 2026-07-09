@@ -819,36 +819,39 @@ class HomeScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.error.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            children: crowded.take(3).map((entry) {
-              final station = metroData.findStationById(entry.key);
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
+        ...crowded.map((entry) {
+          final station = metroData.findStationById(entry.key);
+          final lineName = station != null 
+              ? metroData.lines.firstWhere((l) => l.id == station.lineId).name 
+              : 'Unknown Line';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.groups_rounded,
-                        color: AppColors.error, size: 18),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         station?.name ?? entry.key,
                         style: const TextStyle(
                           color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.error.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
@@ -858,16 +861,44 @@ class HomeScreen extends StatelessWidget {
                         style: TextStyle(
                           color: AppColors.error,
                           fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
                   ],
                 ),
-              );
-            }).toList(),
-          ),
-        ),
+                const SizedBox(height: 4),
+                Text(
+                  lineName,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        color: AppColors.error, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Heavy crowd detected.\nAvoid peak hours if possible.',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -880,8 +911,18 @@ class HomeScreen extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: admin.activeAnnouncementsStream,
       builder: (ctx, snap) {
-        final docs = snap.data?.docs ?? [];
+        final docs = snap.data?.docs.toList() ?? [];
         if (docs.isEmpty) return const SizedBox.shrink();
+
+        // Sort descending locally to avoid requiring a composite index in Firestore
+        docs.sort((a, b) {
+          final ta = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          final tb = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          if (ta == null && tb == null) return 0;
+          if (ta == null) return 1;
+          if (tb == null) return -1;
+          return tb.compareTo(ta);
+        });
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

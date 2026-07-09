@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -10,10 +11,10 @@ import '../../core/providers/favorites_provider.dart';
 import '../../core/providers/metro_provider.dart';
 import '../../core/providers/wallet_provider.dart';
 import '../../core/data/metro_data.dart';
+import '../../core/providers/admin_provider.dart';
 import '../auth/login_screen.dart';
 import '../main_nav/main_navigation.dart';
 import 'edit_profile_screen.dart';
-import '../../core/services/notification_service.dart';
 import 'transit_alarm_screen.dart';
 import 'user_announcements_screen.dart';
 import '../tickets/detailed_dummy_payment_screen.dart';
@@ -227,20 +228,26 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => _showTicketHistory(context, tickets),
               ).animate().fadeIn(delay: 350.ms).slideX(begin: 0.05, end: 0),
 
-              _menuItem(
-                context,
-                icon: Icons.campaign_rounded,
-                iconColor: AppColors.error,
-                title: 'Announcements & Alerts',
-                subtitle: 'Live updates from admin',
-                onTap: () {
-                  Navigator.push(
+              StreamBuilder<QuerySnapshot>(
+                stream: context.read<AdminProvider>().activeAnnouncementsStream,
+                builder: (context, snapshot) {
+                  final count = snapshot.data?.docs.length ?? 0;
+                  return _menuItem(
                     context,
-                    MaterialPageRoute(
-                        builder: (_) => const UserAnnouncementsScreen()),
-                  );
-                },
-              ).animate().fadeIn(delay: 375.ms).slideX(begin: 0.05, end: 0),
+                    icon: Icons.campaign_rounded,
+                    iconColor: AppColors.error,
+                    title: 'Announcements & Alerts',
+                    subtitle: count > 0 ? '$count active announcement${count == 1 ? '' : 's'}' : 'No active announcements',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const UserAnnouncementsScreen()),
+                      );
+                    },
+                  ).animate().fadeIn(delay: 375.ms).slideX(begin: 0.05, end: 0);
+                }
+              ),
 
               const SizedBox(height: 24),
 

@@ -1,6 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'admin@gmail.com';
+    }
+
     // Allows users to read/write their own profile and ALL subcollections (tickets, recentSearches, etc.)
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -8,6 +12,24 @@ service cloud.firestore {
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+    }
+    
+    // Admin configurations
+    match /announcements/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /admin_config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /timetable/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /station_status/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
     
     // Add default deny for other collections just to be safe

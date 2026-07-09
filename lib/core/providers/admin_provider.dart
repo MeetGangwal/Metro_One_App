@@ -58,11 +58,23 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  /// Toggle announcement active status
+  Future<bool> toggleAnnouncementStatus(String docId, bool isActive) async {
+    try {
+      await _firestore.db.collection('announcements').doc(docId).update({
+        'isActive': isActive,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error toggling announcement status: $e');
+      return false;
+    }
+  }
+
   /// Stream all announcements ordered by newest first
   Stream<QuerySnapshot> get announcementsStream {
     return _firestore.db
         .collection('announcements')
-        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
@@ -71,7 +83,6 @@ class AdminProvider extends ChangeNotifier {
     return _firestore.db
         .collection('announcements')
         .where('isActive', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 

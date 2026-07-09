@@ -120,7 +120,7 @@ class _UserAnnouncementsScreenState extends State<UserAnnouncementsScreen> {
               // ── Announcements Stream ──
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('announcements').orderBy('createdAt', descending: true).snapshots(),
+                  stream: admin.activeAnnouncementsStream,
                   builder: (ctx, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(
@@ -147,7 +147,17 @@ class _UserAnnouncementsScreenState extends State<UserAnnouncementsScreen> {
                       );
                     }
 
-                    var docs = snap.data?.docs ?? [];
+                    var docs = snap.data?.docs.toList() ?? [];
+                    
+                    // Sort descending by createdAt
+                    docs.sort((a, b) {
+                      final ta = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                      final tb = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                      if (ta == null && tb == null) return 0;
+                      if (ta == null) return 1;
+                      if (tb == null) return -1;
+                      return tb.compareTo(ta);
+                    });
                     
                     if (_selectedFilter != 'all') {
                       docs = docs.where((doc) {
