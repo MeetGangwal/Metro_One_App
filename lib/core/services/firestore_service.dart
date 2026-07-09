@@ -89,6 +89,47 @@ class FirestoreService {
     }
   }
 
+  // ==================== WALLET ====================
+
+  /// Get wallet balance
+  Future<double> getWalletBalance(String uid) async {
+    try {
+      final doc = await db.collection('users').doc(uid).get();
+      if (doc.exists && doc.data()!.containsKey('walletBalance')) {
+        return (doc.data()!['walletBalance'] as num).toDouble();
+      }
+      return 0.0;
+    } catch (e) {
+      debugPrint('Firestore getWalletBalance error: $e');
+      return 0.0;
+    }
+  }
+
+  /// Update wallet balance
+  Future<void> updateWalletBalance(String uid, double newBalance) async {
+    try {
+      await db.collection('users').doc(uid).set({
+        'walletBalance': newBalance,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Firestore updateWalletBalance error: $e');
+    }
+  }
+
+  /// Add a wallet transaction
+  Future<void> addWalletTransaction(String uid, Map<String, dynamic> transaction) async {
+    try {
+      await db
+          .collection('users')
+          .doc(uid)
+          .collection('walletTransactions')
+          .doc(transaction['id'])
+          .set(transaction);
+    } catch (e) {
+      debugPrint('Firestore addWalletTransaction error: $e');
+    }
+  }
+
   // ==================== TICKET HISTORY ====================
 
   /// Save a ticket to Firestore

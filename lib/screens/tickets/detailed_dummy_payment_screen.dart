@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/wallet_provider.dart';
 
 class DetailedDummyPaymentScreen extends StatefulWidget {
   final double amount;
+  final bool isAddingMoney;
 
-  const DetailedDummyPaymentScreen({super.key, required this.amount});
+  const DetailedDummyPaymentScreen({
+    super.key, 
+    required this.amount,
+    this.isAddingMoney = false,
+  });
 
   @override
   State<DetailedDummyPaymentScreen> createState() => _DetailedDummyPaymentScreenState();
@@ -48,10 +55,25 @@ class _DetailedDummyPaymentScreenState extends State<DetailedDummyPaymentScreen>
     if (_selectedSavedMethod == null && _selectedMethod == 'upi') {
        if (_upiController.text.isEmpty || !_upiController.text.contains('@')) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter a valid UPI ID'), backgroundColor: Colors.red),
+            const SnackBar(content: Text('Please enter a valid UPI ID'), backgroundColor: AppColors.error),
           );
           return;
        }
+    }
+
+    if (_selectedMethod == 'wallet') {
+      final wallet = context.read<WalletProvider>();
+      final success = await wallet.deductMoney(widget.amount, 'Ticket Purchase');
+      if (!success) {
+         ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to deduct from wallet'), backgroundColor: AppColors.error),
+         );
+         return;
+      }
+      if (context.mounted) {
+        Navigator.pop(context, true);
+      }
+      return;
     }
 
     showDialog(
@@ -99,8 +121,60 @@ class _DetailedDummyPaymentScreenState extends State<DetailedDummyPaymentScreen>
 
   String? _selectedSavedMethod;
 
+  void _showAddMoneyDialog(WalletProvider wallet) {
+    final TextEditingController amountController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceCard,
+        title: const Text('Add Money to Wallet', style: TextStyle(color: AppColors.textPrimary)),
+        content: TextField(
+          controller: amountController,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Enter amount',
+            hintStyle: const TextStyle(color: AppColors.textMuted),
+            prefixIcon: const Icon(Icons.currency_rupee, color: AppColors.textMuted),
+            filled: true,
+            fillColor: AppColors.surfaceLight,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final val = double.tryParse(amountController.text);
+              if (val != null && val > 0) {
+                Navigator.pop(ctx);
+                final success = await wallet.addMoney(val);
+                if (success && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('₹$val added to wallet successfully'), backgroundColor: AppColors.success),
+                  );
+                }
+              } else {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: AppColors.error),
+                  );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Add Money', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final walletProvider = context.watch<WalletProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -151,6 +225,11 @@ class _DetailedDummyPaymentScreenState extends State<DetailedDummyPaymentScreen>
                       ),
                     ),
                     const SizedBox(height: 24),
+                    
+                    if (!widget.isAddingMoney) ...[
+                      _buildWalletSection(walletProvider),
+                      const SizedBox(height: 24),
+                    ],
                     
                     const Text('Saved Options', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 12),
@@ -408,6 +487,93 @@ class _DetailedDummyPaymentScreenState extends State<DetailedDummyPaymentScreen>
         borderSide: BorderSide.none,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildWalletSection(WalletProvider wallet) {
+    final bool canAfford = wallet.balance >= widget.amount;
+    final bool isSelected = _selectedMethod == 'wallet';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Wallet', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceCard,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isSelected ? AppColors.primary : Colors.transparent, width: 2),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Balance', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      Text(
+                        '₹${wallet.balance.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          color: canAfford ? AppColors.textPrimary : AppColors.error,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ElevatedButton(
+                    onPressed: wallet.isLoading ? null : () => _showAddMoneyDialog(wallet),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                      foregroundColor: AppColors.primary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: wallet.isLoading 
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                        : const Text('Add Money', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(color: AppColors.surfaceLight, height: 1),
+              const SizedBox(height: 16),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  if (canAfford) {
+                    setState(() {
+                      _selectedMethod = 'wallet';
+                      _selectedSavedMethod = null;
+                    });
+                  }
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_rounded, color: canAfford ? (isSelected ? AppColors.primary : AppColors.textPrimary) : AppColors.textMuted),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Pay with Wallet', style: TextStyle(color: canAfford ? AppColors.textPrimary : AppColors.textMuted, fontWeight: FontWeight.w600)),
+                          if (!canAfford)
+                            const Text('Insufficient Wallet Balance', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

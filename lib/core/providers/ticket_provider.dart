@@ -21,16 +21,20 @@ class TicketProvider extends ChangeNotifier {
   List<MetroTicket> get tickets => _tickets;
   List<MetroTicket> get activeTickets => _tickets
       .where((t) {
-        if (t.status != 'active') return false;
-        final isMonthly = t.ticketType == 'monthly_pass';
-        return DateTime.now().difference(t.createdAt).inHours < (isMonthly ? 720 : 24);
+        if (t.status == 'active') {
+          final isMonthly = t.ticketType == 'monthly_pass';
+          return DateTime.now().difference(t.createdAt).inHours < (isMonthly ? 720 : 24);
+        }
+        return false;
       })
       .toList();
   List<MetroTicket> get usedTickets => _tickets
       .where((t) {
-        if (t.status == 'used') return true;
-        final isMonthly = t.ticketType == 'monthly_pass';
-        return DateTime.now().difference(t.createdAt).inHours >= (isMonthly ? 720 : 24);
+        if (t.status == 'active') {
+          final isMonthly = t.ticketType == 'monthly_pass';
+          return DateTime.now().difference(t.createdAt).inHours >= (isMonthly ? 720 : 24);
+        }
+        return true;
       })
       .toList();
   bool get isLoading => _isLoading;
@@ -106,28 +110,12 @@ class TicketProvider extends ChangeNotifier {
     try {
       final firestoreTickets = await _firestore.getTicketHistory(_uid!);
       
-      // 30-Day Cleanup Logic
-      final now = DateTime.now();
-      final validTickets = <MetroTicket>[];
-      bool deletedAny = false;
-
-      for (final ticket in firestoreTickets) {
-        if (now.difference(ticket.createdAt).inDays >= 30) {
-           await _firestore.deleteTicket(_uid!, ticket.id);
-           deletedAny = true;
-        } else {
-           validTickets.add(ticket);
-        }
-      }
-
-      // Override local tickets with scrubbed Firestore content
-      _tickets = validTickets;
+      // Override local tickets with Firestore content
+      _tickets = firestoreTickets;
       _checkExpirations();
       _tickets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
-      if (deletedAny) {
-          await _saveTickets();
-      }
+      await _saveTickets();
       notifyListeners();
     } catch (e) {
       debugPrint('Error syncing tickets from Firestore: $e');

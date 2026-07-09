@@ -17,6 +17,7 @@ class TicketsScreen extends StatefulWidget {
 class _TicketsScreenState extends State<TicketsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isNewestFirst = true;
 
   @override
   void initState() {
@@ -93,13 +94,74 @@ class _TicketsScreenState extends State<TicketsScreen>
                 controller: _tabController,
                 children: [
                   _buildTicketList(ticketProvider.activeTickets, true),
-                  _buildTicketList(ticketProvider.usedTickets, false),
+                  _buildHistoryTab(ticketProvider.usedTickets),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHistoryTab(List<MetroTicket> tickets) {
+    List<MetroTicket> sortedTickets = List.from(tickets);
+    if (!_isNewestFirst) {
+      sortedTickets.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    } else {
+      sortedTickets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Sort by:',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              DropdownButton<bool>(
+                value: _isNewestFirst,
+                dropdownColor: AppColors.surfaceCard,
+                underline: const SizedBox(),
+                icon: const Icon(Icons.sort, color: AppColors.primary, size: 18),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: true,
+                    child: Text('Newest to Oldest'),
+                  ),
+                  DropdownMenuItem(
+                    value: false,
+                    child: Text('Oldest to Newest'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _isNewestFirst = value;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _buildTicketList(sortedTickets, false),
+        ),
+      ],
     );
   }
 

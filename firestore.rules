@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allows users to read/write their own profile and ALL subcollections (tickets, recentSearches, etc.)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Add default deny for other collections just to be safe
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

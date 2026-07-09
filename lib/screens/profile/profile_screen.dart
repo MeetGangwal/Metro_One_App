@@ -8,6 +8,7 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/providers/ticket_provider.dart';
 import '../../core/providers/favorites_provider.dart';
 import '../../core/providers/metro_provider.dart';
+import '../../core/providers/wallet_provider.dart';
 import '../../core/data/metro_data.dart';
 import '../auth/login_screen.dart';
 import '../main_nav/main_navigation.dart';
@@ -15,6 +16,7 @@ import 'edit_profile_screen.dart';
 import '../../core/services/notification_service.dart';
 import 'transit_alarm_screen.dart';
 import 'user_announcements_screen.dart';
+import '../tickets/detailed_dummy_payment_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -25,6 +27,7 @@ class ProfileScreen extends StatelessWidget {
     final tickets = context.watch<TicketProvider>();
     final favorites = context.watch<FavoritesProvider>();
     final metro = context.watch<MetroProvider>();
+    final wallet = context.watch<WalletProvider>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -139,6 +142,54 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
 
+              // Wallet Section
+              Container(
+                margin: const EdgeInsets.only(top: 24),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Wallet Balance',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '₹${wallet.balance.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _openAddMoney(context, wallet),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text('Add Money', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1, end: 0),
+
               const SizedBox(height: 24),
 
               // Quick Actions
@@ -172,7 +223,7 @@ class ProfileScreen extends StatelessWidget {
                 icon: Icons.confirmation_num_rounded,
                 iconColor: AppColors.primary,
                 title: 'Ticket History',
-                subtitle: '${tickets.tickets.length} tickets',
+                subtitle: '${tickets.totalTrips} tickets',
                 onTap: () => _showTicketHistory(context, tickets),
               ).animate().fadeIn(delay: 350.ms).slideX(begin: 0.05, end: 0),
 
@@ -280,6 +331,67 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _openAddMoney(BuildContext context, WalletProvider wallet) {
+    final TextEditingController amountController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceCard,
+        title: const Text('Add Money to Wallet', style: TextStyle(color: AppColors.textPrimary)),
+        content: TextField(
+          controller: amountController,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Enter amount (e.g. 500)',
+            hintStyle: const TextStyle(color: AppColors.textMuted),
+            prefixIcon: const Icon(Icons.currency_rupee, color: AppColors.textMuted),
+            filled: true,
+            fillColor: AppColors.surfaceLight,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final val = double.tryParse(amountController.text);
+              if (val != null && val > 0) {
+                Navigator.pop(ctx);
+                
+                // Open DetailedDummyPaymentScreen
+                final success = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DetailedDummyPaymentScreen(amount: val, isAddingMoney: true),
+                  ),
+                );
+
+                if (success == true) {
+                   final addSuccess = await wallet.addMoney(val);
+                   if (addSuccess && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('₹$val added to wallet successfully'), backgroundColor: AppColors.success),
+                      );
+                   }
+                }
+              } else {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: AppColors.error),
+                  );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Proceed to Pay', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -730,16 +842,16 @@ class ProfileScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: tickets.tickets.isEmpty
+                    child: tickets.usedTickets.isEmpty
                         ? const Center(
-                            child: Text('No tickets yet',
+                            child: Text('No past tickets yet',
                                 style: TextStyle(color: AppColors.textMuted)),
                           )
                         : ListView.builder(
                             controller: scrollController,
-                            itemCount: tickets.tickets.length,
+                            itemCount: tickets.usedTickets.length,
                             itemBuilder: (_, index) {
-                              final ticket = tickets.tickets[index];
+                              final ticket = tickets.usedTickets[index];
                               final isActive = ticket.status == 'active';
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),

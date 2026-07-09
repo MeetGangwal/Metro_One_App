@@ -14,6 +14,7 @@ import 'core/providers/crowd_provider.dart';
 import 'core/providers/favorites_provider.dart';
 import 'core/providers/transit_alarm_provider.dart';
 import 'core/providers/admin_provider.dart';
+import 'core/providers/wallet_provider.dart';
 import 'screens/splash/splash_screen.dart';
 
 import 'core/services/notification_service.dart';
@@ -94,6 +95,19 @@ class MumbaiMetroApp extends StatelessWidget {
           create: (_) => FavoritesProvider(prefs),
           update: (_, auth, fav) {
             final provider = fav ?? FavoritesProvider(prefs);
+            final effectiveUid = auth.uid;
+            if (effectiveUid.isNotEmpty) {
+              provider.setUid(effectiveUid);
+            } else if (!auth.isLoggedIn) {
+              provider.clearData();
+            }
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AppAuthProvider, WalletProvider>(
+          create: (_) => WalletProvider(),
+          update: (_, auth, wallet) {
+            final provider = wallet ?? WalletProvider();
             final effectiveUid = auth.uid;
             if (effectiveUid.isNotEmpty) {
               provider.setUid(effectiveUid);
